@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Wand2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Wand2, Bot, Sparkles, Download } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { DocumentTemplate, UploadedFile } from "@shared/schema";
@@ -14,6 +17,7 @@ export function DocumentGeneration() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [generatedAIContent, setGeneratedAIContent] = useState<string>("");
   const [includeSections, setIncludeSections] = useState({
     restServiceSpecs: true,
     wsdlDocumentation: true,
@@ -35,6 +39,38 @@ export function DocumentGeneration() {
     queryKey: ['/api/status'],
   });
 
+  const generateAIMutation = useMutation({
+    mutationFn: async () => {
+      const parsedFiles = files.filter(file => file.status === 'parsed');
+      if (parsedFiles.length === 0) {
+        throw new Error("No parsed files available for document generation");
+      }
+
+      const response = await apiRequest('POST', '/api/ai/generate-document', {
+        fileIds: parsedFiles.map(file => file.id),
+        includeFlowDiagrams: includeSections.flowDiagrams,
+        includeDataMapping: includeSections.requestResponseMapping,
+      });
+
+      setGeneratedAIContent(response.content);
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "AI document generated successfully",
+        description: "Your AI-powered design document is ready for review.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "AI generation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const generateMutation = useMutation({
     mutationFn: async () => {
       if (!selectedTemplate) {
@@ -49,13 +85,10 @@ export function DocumentGeneration() {
       const response = await apiRequest('POST', '/api/documents/generate', {
         templateId: selectedTemplate,
         fileIds: parsedFiles.map(file => file.id),
-        configuration: {
-          includeSections,
-          timestamp: new Date().toISOString(),
-        }
+        includeSections,
       });
 
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       toast({
@@ -82,7 +115,7 @@ export function DocumentGeneration() {
     { id: 'errorHandlingPatterns', label: 'Error Handling Patterns', checked: includeSections.errorHandlingPatterns },
   ];
 
-  const canGenerate = selectedTemplate && files.some(file => file.status === 'parsed') && status?.percentage >= 50;
+  const canGenerate = selectedTemplate && files.some(file => file.status === 'parsed') && (status as any)?.percentage >= 50;
 
   const handleSectionChange = (sectionId: string, checked: boolean) => {
     setIncludeSections(prev => ({
@@ -103,70 +136,169 @@ export function DocumentGeneration() {
           Document Generation
         </h3>
         
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
-              Document Template
-            </Label>
-            <Select value={selectedTemplate?.toString() || ""} onValueChange={(value) => setSelectedTemplate(parseInt(value))}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a template" />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((template) => (
-                  <SelectItem key={template.id} value={template.id.toString()}>
-                    {template.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedTemplate && (
-              <p className="text-xs text-gray-500 mt-1">
-                {templates.find(t => t.id === selectedTemplate)?.description}
-              </p>
-            )}
-          </div>
+        <Tabs defaultValue="ai" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="ai" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              AI-Powered
+              <Badge variant="default" className="ml-1">New</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="traditional">
+              <FileText className="h-4 w-4 mr-2" />
+              Traditional
+            </TabsTrigger>
+          </TabsList>
           
-          <div>
-            <Label className="text-sm font-medium text-gray-700 mb-3 block">
-              Include Sections
-            </Label>
-            <div className="space-y-2">
-              {sectionOptions.map((section) => (
-                <div key={section.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={section.id}
-                    checked={section.checked}
-                    onCheckedChange={(checked) => handleSectionChange(section.id, checked as boolean)}
-                  />
-                  <Label htmlFor={section.id} className="text-sm text-gray-700 cursor-pointer">
-                    {section.label}
-                  </Label>
+          <TabsContent value="ai" className="space-y-4 mt-6">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-start space-x-3">
+                <Sparkles className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-medium text-blue-900">AI-Powered Document Generation</h4>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Automatically analyze your ESB artifacts and generate comprehensive design documents following enterprise standards. 
+                    Supports REST and SOAP services with intelligent content organization.
+                  </p>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
-          
-          <Button 
-            onClick={handleGenerate}
-            disabled={!canGenerate || generateMutation.isPending}
-            className="w-full bg-primary text-white hover:bg-blue-700"
-          >
-            <Wand2 className="h-4 w-4 mr-2" />
-            {generateMutation.isPending ? "Generating..." : "Generate Document"}
-          </Button>
 
-          {!canGenerate && (
-            <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-              <p>Document generation requirements:</p>
-              <ul className="list-disc list-inside mt-1 space-y-1">
-                <li>Select a document template</li>
-                <li>At least one file must be successfully parsed</li>
-                <li>Processing must be at least 50% complete</li>
-              </ul>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="ai-flow-diagrams" 
+                    checked={includeSections.flowDiagrams}
+                    onCheckedChange={(checked) => handleSectionChange('flowDiagrams', !!checked)}
+                  />
+                  <Label htmlFor="ai-flow-diagrams" className="text-sm">Include Flow Diagrams</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="ai-data-mapping" 
+                    checked={includeSections.requestResponseMapping}
+                    onCheckedChange={(checked) => handleSectionChange('requestResponseMapping', !!checked)}
+                  />
+                  <Label htmlFor="ai-data-mapping" className="text-sm">Include Data Mapping</Label>
+                </div>
+              </div>
+
+              <Button 
+                onClick={() => generateAIMutation.mutate()}
+                disabled={files.length === 0 || generateAIMutation.isPending}
+                className="w-full"
+                size="lg"
+              >
+                {generateAIMutation.isPending ? (
+                  <>
+                    <Wand2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating AI Document...
+                  </>
+                ) : (
+                  <>
+                    <Bot className="mr-2 h-4 w-4" />
+                    Generate AI Document
+                  </>
+                )}
+              </Button>
+
+              {generatedAIContent && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Generated Document Preview</Label>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const blob = new Blob([generatedAIContent], { type: 'text/markdown' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'service-design-document.md';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download MD
+                    </Button>
+                  </div>
+                  <Textarea 
+                    value={generatedAIContent}
+                    readOnly
+                    className="h-96 font-mono text-sm"
+                    placeholder="Generated document will appear here..."
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </TabsContent>
+          
+          <TabsContent value="traditional" className="space-y-4 mt-6">
+            <div>
+              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                Document Template
+              </Label>
+              <Select value={selectedTemplate?.toString() || ""} onValueChange={(value) => setSelectedTemplate(parseInt(value))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id.toString()}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedTemplate && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {templates.find(t => t.id === selectedTemplate)?.description}
+                </p>
+              )}
+            </div>
+            
+            <div>
+              <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                Include Sections
+              </Label>
+              <div className="space-y-2">
+                {sectionOptions.map((section) => (
+                  <div key={section.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={section.id}
+                      checked={section.checked}
+                      onCheckedChange={(checked) => handleSectionChange(section.id, checked as boolean)}
+                    />
+                    <Label htmlFor={section.id} className="text-sm text-gray-700 cursor-pointer">
+                      {section.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <Button 
+              onClick={handleGenerate}
+              disabled={!canGenerate || generateMutation.isPending}
+              className="w-full bg-primary text-white hover:bg-blue-700"
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              {generateMutation.isPending ? "Generating..." : "Generate Document"}
+            </Button>
+
+            {!canGenerate && (
+              <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                <p>Document generation requirements:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>Select a document template</li>
+                  <li>At least one file must be successfully parsed</li>
+                  <li>Processing must be at least 50% complete</li>
+                </ul>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </Card>
   );

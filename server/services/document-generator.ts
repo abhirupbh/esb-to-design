@@ -1,4 +1,5 @@
 import { storage } from "../storage";
+import { openaiService, type DocumentGenerationRequest } from './openai-service.js';
 import { DocumentTemplate, GeneratedDocument } from "@shared/schema";
 
 export interface DocumentSection {
@@ -29,7 +30,10 @@ export class DocumentGenerator {
     });
 
     try {
-      // Generate document sections
+      // Use OpenAI to generate comprehensive design document
+      const aiGeneratedContent = await this.generateAIDocument(fileIds, configuration);
+      
+      // Also generate sections using traditional method for comparison/backup
       const sections = await this.generateSections(template, fileIds, configuration);
       
       // Update document with generated content
@@ -37,8 +41,10 @@ export class DocumentGenerator {
         status: "completed",
         configuration: {
           ...configuration,
+          aiGeneratedContent,
           sections,
-          generatedSections: sections.length
+          generatedSections: sections.length,
+          generationType: 'ai-powered'
         }
       });
 
@@ -52,6 +58,95 @@ export class DocumentGenerator {
         }
       });
       throw error;
+    }
+  }
+
+  async generateAIDocument(fileIds: number[], configuration: any): Promise<string> {
+    try {
+      // Collect all analyzed data from the files
+      const allServices = [];
+      const allIntegrationPoints = [];
+      let overallArchitecture = "";
+      let securityPatterns: string[] = [];
+      let errorHandling: string[] = [];
+      let detectedPlatform = 'Unknown';
+
+      for (const fileId of fileIds) {
+        const services = await storage.getServicesByFileId(fileId);
+        const transformations = await storage.getTransformationsByFileId(fileId);
+        const file = await storage.getUploadedFile(fileId);
+        
+        if (file?.platform) {
+          detectedPlatform = file.platform;
+        }
+
+        // Extract services with their analysis metadata
+        for (const service of services) {
+          const config = service.configuration as any;
+          if (config?.analysisMetadata) {
+            overallArchitecture = config.analysisMetadata.overallArchitecture || overallArchitecture;
+            securityPatterns = [...securityPatterns, ...(config.analysisMetadata.securityPatterns || [])];
+            errorHandling = [...errorHandling, ...(config.analysisMetadata.errorHandling || [])];
+          }
+
+          allServices.push({
+            name: service.name,
+            type: service.type as 'REST' | 'SOAP' | 'JMS' | 'FILE',
+            endpoint: service.endpoint || undefined,
+            methods: service.method?.split(', '),
+            description: service.description || undefined,
+            requestSchema: service.requestSchema ? JSON.parse(service.requestSchema) : undefined,
+            responseSchema: service.responseSchema ? JSON.parse(service.responseSchema) : undefined,
+            orchestrationSteps: config?.orchestrationSteps || [],
+            dataMapping: config?.dataMapping || []
+          });
+        }
+
+        // Extract integration points from transformations
+        for (const transform of transformations) {
+          const config = transform.mappingConfiguration as any;
+          if (config?.integrationType) {
+            allIntegrationPoints.push({
+              name: transform.name,
+              type: config.integrationType,
+              description: config.description || transform.targetSchema || '',
+              connectedSystems: config.connectedSystems || []
+            });
+          }
+        }
+      }
+
+      // Prepare the analysis result for document generation
+      const analysisResult = {
+        platform: detectedPlatform as 'OSB' | 'Boomi' | 'Tibco' | 'MuleSoft' | 'Unknown',
+        services: allServices,
+        integrationPoints: allIntegrationPoints,
+        overallArchitecture,
+        securityPatterns: Array.from(new Set(securityPatterns)), // Remove duplicates
+        errorHandling: Array.from(new Set(errorHandling))
+      };
+
+      // Determine what sections to include based on service types
+      const hasRestServices = allServices.some(s => s.type === 'REST');
+      const hasSoapServices = allServices.some(s => s.type === 'SOAP');
+
+      const documentRequest: DocumentGenerationRequest = {
+        analysisResult,
+        templateFormat: configuration?.templateFormat || 'enterprise',
+        includeRestSpecs: hasRestServices,
+        includeSoapSpecs: hasSoapServices,
+        includeFlowDiagrams: configuration?.includeFlowDiagrams ?? true,
+        includeDataMapping: configuration?.includeDataMapping ?? true
+      };
+
+      // Generate the document using OpenAI
+      const generatedDocument = await openaiService.generateDesignDocument(documentRequest);
+      
+      return generatedDocument;
+
+    } catch (error) {
+      console.error('Error generating AI document:', error);
+      throw new Error(`Failed to generate AI document: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -415,7 +510,7 @@ export class DocumentGenerator {
 <body>
   <h1>Service Design Document</h1>
   <p>Generated on: ${new Date().toLocaleDateString()}</p>
-  ${this.renderSectionsAsHtml(document.configuration?.sections || [])}
+  ${this.renderSectionsAsHtml((document.configuration as any)?.sections || [])}
 </body>
 </html>`;
     

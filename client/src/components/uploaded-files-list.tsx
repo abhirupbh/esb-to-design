@@ -162,7 +162,7 @@ export function UploadedFilesList() {
                       <span>{formatFileSize(file.size)}</span>
                       {file.platform && (
                         <span className="flex items-center">
-                          <div className={`w-2 h-2 ${getPlatformColor(file.platform)} rounded-full mr-1`}></div>
+                          <div className={`w-2 h-2 ${getPlatformColor(file.platform || '')} rounded-full mr-1`}></div>
                           {file.platform}
                         </span>
                       )}

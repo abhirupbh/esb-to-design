@@ -8,7 +8,7 @@ import { validateFileType, validateFileSize, formatFileSize } from "@/lib/file-u
 import { useToast } from "@/hooks/use-toast";
 
 export function FileUpload() {
-  const { addFiles, startUpload, isUploading } = useFileUpload();
+  const { addFiles, startUpload, isUploading, uploadFiles, removeFile, clearAll } = useFileUpload();
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
@@ -146,6 +146,77 @@ export function FileUpload() {
             </div>
           </div>
         </div>
+
+        {/* Pending Upload Files */}
+        {uploadFiles.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-gray-700">Ready to Upload ({uploadFiles.length})</h4>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={clearAll}
+                disabled={isUploading}
+              >
+                Clear All
+              </Button>
+            </div>
+            
+            <div className="space-y-2 mb-4">
+              {uploadFiles.map((uploadFile) => (
+                <div key={uploadFile.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <FileUp className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{uploadFile.file.name}</p>
+                      <p className="text-xs text-gray-500">{formatFileSize(uploadFile.file.size)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {uploadFile.status === 'uploading' && (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs text-blue-600">Uploading...</span>
+                      </div>
+                    )}
+                    {uploadFile.status === 'error' && (
+                      <span className="text-xs text-red-600">Error: {uploadFile.error}</span>
+                    )}
+                    {uploadFile.status === 'pending' && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removeFile(uploadFile.id)}
+                        disabled={isUploading}
+                      >
+                        <AlertCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Button 
+              onClick={startUpload}
+              disabled={isUploading || uploadFiles.length === 0}
+              className="w-full bg-primary hover:bg-blue-700"
+              size="lg"
+            >
+              {isUploading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Uploading Files...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload {uploadFiles.length} File{uploadFiles.length !== 1 ? 's' : ''}
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -12,29 +12,37 @@ import { ExportOptions } from "@/components/export-options";
 import { FlowDiagram } from "@/components/flow-diagram";
 
 export default function Dashboard() {
-  const [currentStep, setCurrentStep] = useState(1);
-
   const { data: status } = useQuery({
     queryKey: ['/api/status'],
     refetchInterval: 2000,
   });
 
   // Determine current step based on processing status
-  const getProcessingStep = () => {
+  const getCurrentStep = () => {
     if (!status) return 1;
-    if (status.files === 0) return 1;
-    if (status.platformDetection !== 'complete') return 2;
-    if (status.serviceExtraction !== 'complete') return 2;
-    if (status.services === 0) return 2;
-    return 3;
+    const statusData = status as any;
+    if (statusData.files === 0) return 1;
+    if (statusData.percentage < 50) return 2;
+    if (statusData.percentage < 100) return 3;
+    return 4;
   };
 
+  const currentStep = getCurrentStep();
+
   const processSteps = [
-    { step: 1, label: "Upload Files", active: currentStep >= 1 },
-    { step: 2, label: "Parse & Extract", active: currentStep >= 2 },
-    { step: 3, label: "Generate Document", active: currentStep >= 3 },
-    { step: 4, label: "Export", active: currentStep >= 4 }
+    { step: 1, label: "Upload Files", active: currentStep >= 1, clickable: true },
+    { step: 2, label: "Parse & Extract", active: currentStep >= 2, clickable: currentStep >= 2 },
+    { step: 3, label: "Generate Document", active: currentStep >= 3, clickable: currentStep >= 3 },
+    { step: 4, label: "Export", active: currentStep >= 4, clickable: currentStep >= 4 }
   ];
+
+  const handleStepClick = (step: number) => {
+    // Only allow clicking on completed or current step
+    if (step <= currentStep) {
+      const element = document.getElementById(`step-${step}`);
+      element?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,16 +78,22 @@ export default function Dashboard() {
             <div className="flex items-center space-x-8 w-full">
               {processSteps.map((step, index) => (
                 <div key={step.step} className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step.active 
-                      ? 'bg-primary text-white' 
-                      : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div 
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium cursor-pointer transition-all ${
+                      step.active 
+                        ? 'bg-primary text-white shadow-md' 
+                        : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                    } ${step.clickable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
+                    onClick={() => step.clickable && handleStepClick(step.step)}
+                  >
                     {step.step}
                   </div>
-                  <span className={`text-sm font-medium ${
-                    step.active ? 'text-primary' : 'text-gray-500'
-                  }`}>
+                  <span 
+                    className={`text-sm font-medium cursor-pointer ${
+                      step.active ? 'text-primary' : 'text-gray-500'
+                    }`}
+                    onClick={() => step.clickable && handleStepClick(step.step)}
+                  >
                     {step.label}
                   </span>
                   {index < processSteps.length - 1 && (
@@ -95,10 +109,14 @@ export default function Dashboard() {
           {/* Main Content Area */}
           <div className="xl:col-span-2 space-y-6">
             {/* File Upload Section */}
-            <FileUpload />
+            <div id="step-1">
+              <FileUpload />
+            </div>
 
             {/* Uploaded Files List */}
-            <UploadedFilesList />
+            <div id="step-2">
+              <UploadedFilesList />
+            </div>
 
             {/* Service Configuration Display */}
             <ServiceConfiguration />
@@ -110,10 +128,14 @@ export default function Dashboard() {
             <ProcessingStatus />
 
             {/* Document Generation */}
-            <DocumentGeneration />
+            <div id="step-3">
+              <DocumentGeneration />
+            </div>
 
             {/* Export Options */}
-            <ExportOptions />
+            <div id="step-4">
+              <ExportOptions />
+            </div>
           </div>
         </div>
 

@@ -259,6 +259,9 @@ export class MemStorage implements IStorage {
     const newDocument: GeneratedDocument = {
       ...document,
       id,
+      status: document.status || "pending",
+      configuration: document.configuration || null,
+      fileIds: document.fileIds || null,
       generatedAt: new Date()
     };
     this.generatedDocuments.set(id, newDocument);

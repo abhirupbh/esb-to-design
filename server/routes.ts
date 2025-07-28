@@ -22,7 +22,7 @@ function calculateProgress(files: any[], services: any[], proxyServices: any[], 
   if (services.length > 0) progress += 25;
   
   // Flow diagram generation (25%)
-  if (services.length > 0 && proxyServices.length > 0) progress += 25;
+  if (services.length > 0) progress += 25;
   
   return progress;
 }
@@ -230,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate document
+  // Generate document with AI
   app.post('/api/documents/generate', async (req, res) => {
     try {
       const { templateId, fileIds, configuration } = req.body;
@@ -249,6 +249,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ 
         message: 'Failed to generate document',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // AI-powered document generation
+  app.post('/api/ai/generate-document', async (req, res) => {
+    try {
+      const { fileIds, includeFlowDiagrams, includeDataMapping } = req.body;
+      
+      if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+        return res.status(400).json({ message: 'File IDs are required' });
+      }
+
+      const files = await Promise.all(fileIds.map(id => storage.getUploadedFile(id)));
+      const services = await storage.getServices();
+      const transformations = await storage.getTransformations();
+
+      const content = await documentGenerator.generateAIDocument(fileIds, {
+        files: files.filter(Boolean),
+        services,
+        transformations,
+        includeFlowDiagrams,
+        includeDataMapping,
+      });
+
+      res.json({ 
+        content,
+        type: 'markdown',
+        generatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error generating AI document:', error);
+      res.status(500).json({ 
+        message: 'Failed to generate AI document',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
