@@ -1,0 +1,229 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .step-indicator {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors;
+  }
+
+  .step-indicator.active {
+    @apply bg-primary text-white;
+  }
+
+  .step-indicator.inactive {
+    @apply bg-gray-200 text-gray-500;
+  }
+
+  .platform-badge {
+    @apply w-8 h-8 rounded flex items-center justify-center text-white text-xs font-bold;
+  }
+
+  .platform-osb {
+    @apply bg-orange-500;
+  }
+
+  .platform-boomi {
+    @apply bg-blue-600;
+  }
+
+  .platform-tibco {
+    @apply bg-green-600;
+  }
+
+  .platform-mulesoft {
+    @apply bg-purple-600;
+  }
+
+  .service-type-badge {
+    @apply px-2 py-1 text-xs rounded-full font-medium;
+  }
+
+  .service-type-rest {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .service-type-soap {
+    @apply bg-orange-100 text-orange-800;
+  }
+
+  .service-type-jms {
+    @apply bg-purple-100 text-purple-800;
+  }
+
+  .service-type-file {
+    @apply bg-blue-100 text-blue-800;
+  }
+
+  .status-badge {
+    @apply px-2 py-1 text-xs rounded-full font-medium flex items-center;
+  }
+
+  .status-uploaded {
+    @apply bg-blue-100 text-blue-800;
+  }
+
+  .status-processing {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .status-parsed {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .status-error {
+    @apply bg-red-100 text-red-800;
+  }
+}
+
+/* Custom animations */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Flow diagram styles */
+.flow-diagram-container {
+  background: linear-gradient(45deg, #f8fafc 25%, transparent 25%),
+              linear-gradient(-45deg, #f8fafc 25%, transparent 25%),
+              linear-gradient(45deg, transparent 75%, #f8fafc 75%),
+              linear-gradient(-45deg, transparent 75%, #f8fafc 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* File upload zone styles */
+.file-upload-zone {
+  transition: all 0.2s ease-in-out;
+}
+
+.file-upload-zone:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.file-upload-zone.drag-active {
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+}
+
+/* Processing status indicators */
+.processing-indicator {
+  position: relative;
+  overflow: hidden;
+}
+
+.processing-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Zoom controls */
+.zoom-controls {
+  background: hsla(0, 0%, 100%, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(60, 4.8%, 95.9%);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(20, 5.9%, 90%);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(25, 5.3%, 44.7%);
+}
